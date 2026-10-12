@@ -1,0 +1,1555 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Decorate Your Room — Pixel Editor</title>
+<style>
+  :root{
+    --bg:#241c2e; --panel:#33283f; --panel2:#4a3d58; --panel3:#5d4d6e;
+    --gold:#f0c060; --gold-d:#a87a28; --text:#f2e9dd;
+  }
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { margin:0; padding:0; }
+  html { overflow-y: auto; overflow-x: hidden; }
+  body {
+    min-height: 100vh;
+    background: var(--bg); color: var(--text);
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden; overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .screen { display: none; }
+  .screen.active { display: block; }
+
+  .btn{
+    font-family:inherit; font-size:15px; font-weight:700; cursor:pointer;
+    background:var(--gold); color:#3a2a10; border:none; border-radius:8px;
+    padding:10px 18px; box-shadow:0 4px 0 var(--gold-d);
+    transition:transform .06s, box-shadow .06s, filter .12s;
+  }
+  .btn:hover{filter:brightness(1.07);}
+  .btn:active{transform:translateY(3px); box-shadow:0 1px 0 var(--gold-d);}
+  .btn:disabled{opacity:.45; cursor:default; filter:none; transform:none;}
+  .btn.ghost{background:var(--panel2); color:var(--text); box-shadow:0 4px 0 #2a2135;}
+  .btn.ghost:active{box-shadow:0 1px 0 #2a2135;}
+  .btn.ghost.active{background:#c05050; color:#fff; box-shadow:0 4px 0 #7a3030;}
+  .btn.small{padding:8px 14px; font-size:14px;}
+  .btn:focus-visible, .swatch:focus-visible, .pal-item:focus-visible{outline:3px solid #fff; outline-offset:2px;}
+
+  #menu{max-width:560px; margin:0 auto; padding:64px 24px; text-align:center;}
+  #menu h1{
+    font-size:46px; margin:0 0 4px; color:var(--gold);
+    text-shadow:4px 4px 0 #6b4a2a; letter-spacing:1px;
+  }
+  #menu .sub{color:#b8a8c8; margin-bottom:36px; font-size:15px;}
+  #nameInput{
+    width:100%; max-width:340px; padding:14px 18px; font-size:17px;
+    font-family:inherit; border-radius:10px; border:3px solid var(--panel3);
+    background:#1c1524; color:var(--text); outline:none; text-align:center;
+  }
+  #nameInput:focus{border-color:var(--gold);}
+  .menu-row{display:flex; gap:12px; justify-content:center; margin-top:22px; flex-wrap:wrap;}
+
+  .topbar{
+    display:flex; align-items:center; gap:12px; flex-wrap:wrap;
+    padding:10px 16px; background:var(--panel);
+    border-bottom:3px solid #1c1524; position:sticky; top:0; z-index:10;
+  }
+  .topbar .spacer{flex:1;}
+  .name-field{
+    display:flex; align-items:center; gap:8px; background:#1c1524;
+    border-radius:8px; padding:6px 12px; border:2px solid var(--panel3);
+  }
+  .name-field span{font-size:13px; color:#b8a8c8;}
+  .name-field input{
+    background:transparent; border:none; outline:none; color:var(--text);
+    font-family:inherit; font-size:15px; font-weight:700; width:130px;
+  }
+
+  .editor-body{
+    display:flex; gap:16px; padding:16px; align-items:flex-start;
+    max-width:1240px; margin:0 auto; width:100%;
+  }
+  .sidebar{
+    width:288px; flex-shrink:0; background:var(--panel); border-radius:14px;
+    padding:14px; display:flex; flex-direction:column; gap:14px;
+    max-height:calc(100vh - 130px); overflow-y:auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .sidebar::-webkit-scrollbar{width:8px;}
+  .sidebar::-webkit-scrollbar-thumb{background:var(--panel3); border-radius:4px;}
+  .section-title{
+    font-size:12px; text-transform:uppercase; letter-spacing:1.4px;
+    color:#a08cb8; font-weight:700; margin-bottom:-6px;
+  }
+  .swatches{display:flex; gap:8px; flex-wrap:wrap;}
+  .swatch{
+    width:34px; height:34px; border-radius:8px; cursor:pointer;
+    border:3px solid transparent; padding:0;
+    box-shadow:inset 0 -6px 0 rgba(0,0,0,.18);
+  }
+  .swatch.active{border-color:var(--gold);}
+  .items-grid{display:flex; flex-wrap:wrap; gap:8px;}
+  .pal-item{
+    display:flex; flex-direction:column; align-items:center; gap:3px;
+    width:80px; padding:5px 3px 6px; background:var(--panel2);
+    border:2px solid var(--panel3); border-radius:10px; cursor:pointer;
+    color:var(--text); font-family:inherit; font-size:10.5px; line-height:1.15;
+    transition:background .1s, border-color .1s, transform .06s;
+  }
+  .pal-item:hover{background:var(--panel3);}
+  .pal-item:active{transform:scale(.96);}
+  .pal-item.active{
+    border-color:var(--gold); background:#5d4d6e;
+    box-shadow:0 0 0 2px rgba(240,192,96,.35);
+  }
+  .pal-preview{
+    width:70px; height:60px; display:flex; align-items:center; justify-content:center;
+    background:#1c1524; border-radius:6px;
+  }
+  .pal-preview canvas{image-rendering:pixelated; max-width:100%; max-height:100%;}
+
+  .stage{flex:1; min-width:0; display:flex; flex-direction:column; gap:10px;}
+  .canvas-wrap{
+    background:var(--panel); padding:12px; border-radius:14px;
+    box-shadow:0 8px 0 #1a1322;
+  }
+  #roomCanvas{
+    display:block; width:100%; height:auto; image-rendering:pixelated;
+    border-radius:6px; touch-action:none; cursor:crosshair;
+    background:#1c1524;
+  }
+  .status{
+    min-height:36px; display:flex; align-items:center; justify-content:center;
+    background:var(--panel); border-radius:10px; padding:8px 14px;
+    font-size:14px; font-weight:600; color:var(--gold); text-align:center;
+  }
+  .status.del{color:#ff9a8a;}
+  .hint{
+    font-size:13px; color:#a08cb8; text-align:center; line-height:1.6; margin:0;
+  }
+  .hint b{color:#d8c4e8;}
+
+  #gallery{padding:0 0 60px;}
+  .gallery-head{
+    display:flex; align-items:center; gap:12px; flex-wrap:wrap;
+    padding:14px 20px; background:var(--panel); border-bottom:3px solid #1c1524;
+    position:sticky; top:0; z-index:10;
+  }
+  .gallery-head h2{margin:0; font-size:22px; color:var(--gold);}
+  .gallery-head .spacer{flex:1;}
+  .gallery-grid{
+    display:grid; gap:20px; padding:24px;
+    grid-template-columns:repeat(auto-fill, minmax(320px, 1fr));
+    max-width:1400px; margin:0 auto;
+  }
+  .card{
+    position:relative; background:var(--panel); border-radius:14px;
+    padding:10px; box-shadow:0 6px 0 #1a1322; transition:transform .12s;
+  }
+  .card:hover{transform:translateY(-3px);}
+  .card canvas{display:block; width:100%; height:auto; image-rendering:pixelated; border-radius:8px;}
+  .card-cap{
+    padding:10px 4px 2px; font-size:16px; display:flex; align-items:center;
+    justify-content:space-between; gap:8px;
+  }
+  .card-cap strong{color:var(--gold); font-size:17px;}
+  .card-cap .date{font-size:11px; color:#8a7a9a;}
+  .card-del{
+    position:absolute; top:16px; right:16px; width:28px; height:28px;
+    border-radius:50%; border:none; background:rgba(30,20,40,.75);
+    color:#ff9a8a; font-size:18px; line-height:1; cursor:pointer;
+    opacity:0; transition:opacity .15s;
+  }
+  .card:hover .card-del{opacity:1;}
+  .card-del:focus{opacity:1;}
+  @media (hover:none){ .card-del{opacity:1;} }
+  .empty{
+    grid-column:1/-1; text-align:center; color:#8a7a9a; padding:80px 20px; font-size:17px;
+  }
+
+  @media (max-width:1080px){
+    .editor-body{flex-direction:column;}
+    .sidebar{width:100%; max-height:none; flex-direction:row; flex-wrap:wrap; align-items:flex-start;}
+    .sidebar > *{flex:1 1 220px;}
+    .section-title{width:100%;}
+  }
+  @media (max-width:520px){
+    #menu h1{font-size:32px;}
+    .pal-item{width:70px;}
+    .pal-preview{width:60px; height:52px;}
+  }
+</style>
+</head>
+<body>
+
+<section id="menu" class="screen active">
+  <h1>DECORATE YOUR ROOM</h1>
+  <p class="sub">Pixel Interior Editor</p>
+  <input id="nameInput" type="text" maxlength="20" placeholder="Enter your name" autocomplete="off">
+  <div class="menu-row">
+    <button class="btn" id="startBtn">Start Decorating</button>
+    <button class="btn ghost" id="toGalleryBtn">Room Gallery</button>
+  </div>
+</section>
+
+<section id="editor" class="screen">
+  <div class="topbar">
+    <button class="btn ghost small" id="backToMenu">← Menu</button>
+    <div class="name-field">
+      <span>Name:</span>
+      <input id="editorName" type="text" maxlength="20" placeholder="Student">
+    </div>
+    <div class="spacer"></div>
+    <button class="btn ghost small" id="undoBtn" title="Undo (Ctrl+Z)" disabled>↶ Undo</button>
+    <button class="btn ghost small" id="deleteModeBtn" title="Delete mode">🗑 Delete</button>
+    <button class="btn ghost small" id="clearBtn" title="Remove all items">Clear</button>
+    <button class="btn small" id="doneBtn">Done ✓</button>
+  </div>
+
+  <div class="editor-body">
+    <aside class="sidebar">
+      <div class="section-title">Walls</div>
+      <div class="swatches" id="wallSwatches"></div>
+
+      <div class="section-title">Floor</div>
+      <div class="swatches" id="floorSwatches"></div>
+
+      <div class="section-title">Furniture</div>
+      <div class="items-grid" id="floorItems"></div>
+
+      <div class="section-title">Family</div>
+      <div class="items-grid" id="familyItems"></div>
+
+      <div class="section-title">Pets</div>
+      <div class="items-grid" id="petItems"></div>
+
+      <div class="section-title">On Wall</div>
+      <div class="items-grid" id="wallItems"></div>
+    </aside>
+
+    <div class="stage">
+      <div class="canvas-wrap">
+        <canvas id="roomCanvas"></canvas>
+      </div>
+      <div class="status" id="status"></div>
+      <p class="hint">
+        <b>Small pets, lamp &amp; TV</b> can sit on the <b>table or shelf</b>. <b>Cats &amp; dogs</b> sit on the <b>sofa</b> and curl up on the <b>bed</b>.<br>
+        <b>Family</b> can sit on the <b>sofa, chair or bed</b>.<br>
+        <b>Shelves</b> go on the <b>lower wall row</b>. <b>Carpet</b> goes <b>under</b> everything.<br>
+        <b>Drag</b> to move. <b>Right-click</b> or use <b>Delete</b> to remove. <b>Esc</b> cancels, <b>Ctrl+Z</b> undoes.
+      </p>
+    </div>
+  </div>
+</section>
+
+<section id="gallery" class="screen">
+  <div class="gallery-head">
+    <button class="btn ghost small" id="galleryBack">← Menu</button>
+    <h2>Classroom Rooms</h2>
+    <div class="spacer"></div>
+    <button class="btn ghost small" id="exportBtn">⬇ Save File</button>
+    <button class="btn ghost small" id="importBtn">⬆ Load File</button>
+    <input type="file" id="importFile" accept=".json,application/json" hidden>
+  </div>
+  <div class="gallery-grid" id="galleryGrid"></div>
+</section>
+
+<script>
+/* =========================================================
+   1. CONSTANTS
+   ========================================================= */
+const CELLS_W = 12;
+const CELLS_H = 8;
+const APC     = 8;
+const WALL_ROWS = 2;
+const ROOM_W = CELLS_W * APC;
+const ROOM_H = CELLS_H * APC;
+const EDIT_A = 8;
+
+const WALL_COLORS = [
+  { base:'#c9a884', stripe:'#bf9d78' },
+  { base:'#a8b8a0', stripe:'#9dae95' },
+  { base:'#b8a8c0', stripe:'#ae9eb6' },
+  { base:'#a0b4c8', stripe:'#96aabe' },
+];
+const FLOOR_COLORS = [
+  { base:'#c98f5a', line:'#b57e4a' },
+  { base:'#a9713f', line:'#96602f' },
+  { base:'#d8b878', line:'#c8a668' },
+  { base:'#9a8a7a', line:'#8a7a6a' },
+];
+
+/* =========================================================
+   2. ITEMS
+   layer         — draw order (lower = behind)
+   surface       — other items can sit on this one
+   surfaceOffset — Y (art-pixels) of the surface inside the sprite
+   canSitOn      — which items this can be placed on
+   bedW          — width (cells) the item takes while on a (single) bed
+   minY          — lowest allowed row (shelf must be on the lower wall row,
+                   so there is room above it for the items)
+   ========================================================= */
+const ITEMS = {
+  /* --- furniture / decor --- */
+  carpet:   { name:'Carpet',   w:3, h:2, zone:'floor', layer:0 },
+  window:   { name:'Window',   w:2, h:1, zone:'wall',  layer:0.1 },
+  door:     { name:'Door',     w:2, h:2, zone:'wall',  layer:0.1 },
+  shelf:    { name:'Shelf',    w:2, h:1, zone:'wall',  layer:0.3, surface:true, surfaceOffset:3, minY:1 },
+  bed:      { name:'Bed',      w:1, h:3, zone:'floor', layer:1, surface:true, surfaceOffset:22 },
+  sofa:     { name:'Sofa',     w:3, h:2, zone:'floor', layer:1, surface:true, surfaceOffset:14 },
+  table:    { name:'Table',    w:2, h:2, zone:'floor', layer:1, surface:true, surfaceOffset:7 },
+  chair:    { name:'Chair',    w:1, h:1, zone:'floor', layer:2, surface:true, surfaceOffset:6 },
+  lamp:     { name:'Lamp',     w:1, h:1, zone:'floor', layer:2, canSitOn:['table','shelf'] },
+  tv:       { name:'TV',       w:2, h:1, zone:'floor', layer:2, canSitOn:['table','shelf'] },
+  computer: { name:'Computer', w:2, h:1, zone:'floor', layer:2, canSitOn:['table'] },
+
+  /* --- family (human characters) --- */
+  mum:      { name:'Mum',      w:1, h:2, zone:'floor', layer:3, canSitOn:['sofa','chair','bed'] },
+  dad:      { name:'Dad',      w:1, h:2, zone:'floor', layer:3, canSitOn:['sofa','chair','bed'] },
+  sister:   { name:'Sister',   w:1, h:2, zone:'floor', layer:3, canSitOn:['sofa','chair','bed'] },
+  brother:  { name:'Brother',  w:1, h:2, zone:'floor', layer:3, canSitOn:['sofa','chair','bed'] },
+
+  /* --- pets --- */
+  cat:      { name:'Cat',      w:2, h:1, zone:'floor', layer:3, canSitOn:['bed','sofa'], bedW:1 },
+  dog:      { name:'Dog',      w:2, h:1, zone:'floor', layer:3, canSitOn:['bed','sofa'], bedW:1 },
+  fish:     { name:'Fish',     w:1, h:1, zone:'floor', layer:3, canSitOn:['table','shelf'] },
+  hamster:  { name:'Hamster',  w:1, h:1, zone:'floor', layer:3, canSitOn:['table','shelf','sofa','bed','chair'] },
+  parrot:   { name:'Parrot',   w:1, h:1, zone:'floor', layer:3, canSitOn:['table','shelf'] },
+  rabbit:   { name:'Rabbit',   w:1, h:1, zone:'floor', layer:3, canSitOn:['sofa','bed','chair'] },
+  turtle:   { name:'Turtle',   w:1, h:1, zone:'floor', layer:3, canSitOn:['sofa','bed','chair'] },
+};
+
+const FLOOR_ITEM_LIST  = ['bed','table','chair','sofa','tv','computer','lamp','carpet'];
+const WALL_ITEM_LIST   = ['window','door','shelf'];
+const FAMILY_ITEM_LIST = ['mum','dad','sister','brother'];
+const PET_ITEM_LIST    = ['cat','dog','fish','hamster','parrot','rabbit','turtle'];
+
+/* =========================================================
+   3. PIXEL ART (3/4 view)
+   ========================================================= */
+let A = 8;
+function P(ctx, ox, oy, x, y, w, h, c){
+  ctx.fillStyle = c;
+  ctx.fillRect((ox + x) * A, (oy + y) * A, w * A, h * A);
+}
+
+const DRAW = {
+  /* ---------- FURNITURE ---------- */
+  carpet(ctx, ox, oy){
+    P(ctx,ox,oy, 0, 0,24,16,'#7a3028');
+    P(ctx,ox,oy, 1, 1,22,14,'#c05a4a');
+    P(ctx,ox,oy, 2, 2,20,12,'#d47a68');
+    P(ctx,ox,oy, 3, 3,18,10,'#c05a4a');
+    P(ctx,ox,oy, 5, 5,14, 6,'#e8b0a0');
+    P(ctx,ox,oy, 6, 6,12, 4,'#c05a4a');
+    P(ctx,ox,oy, 9, 6, 6, 4,'#a84a3a');
+    P(ctx,ox,oy,10, 7, 4, 2,'#e8b0a0');
+  },
+  bed(ctx, ox, oy){
+    P(ctx,ox,oy, 0,22, 8, 2,'rgba(0,0,0,0.18)');
+    P(ctx,ox,oy, 0, 0, 8, 5,'#4a2a18');
+    P(ctx,ox,oy, 1, 1, 6, 3,'#8a5a33');
+    P(ctx,ox,oy, 1, 1, 6, 1,'#a9713f');
+    P(ctx,ox,oy, 0, 5, 8,18,'#f4f0e6');
+    P(ctx,ox,oy, 0, 5, 8, 1,'#ffffff');
+    P(ctx,ox,oy, 0,22, 8, 1,'#d0c8b8');
+    P(ctx,ox,oy, 1, 6, 6, 5,'#ffffff');
+    P(ctx,ox,oy, 1, 6, 6, 1,'#f8f8f8');
+    P(ctx,ox,oy, 1,10, 6, 1,'#d8d8d0');
+    P(ctx,ox,oy, 0,12, 8,10,'#5b7fb5');
+    P(ctx,ox,oy, 0,12, 8, 1,'#7ba0d0');
+    P(ctx,ox,oy, 0,21, 8, 1,'#3f5c85');
+    for(let j=0;j<3;j++){
+      P(ctx,ox,oy, 1, 14+j*3, 2, 1,'#4a6a99');
+      P(ctx,ox,oy, 5, 14+j*3, 2, 1,'#4a6a99');
+    }
+    P(ctx,ox,oy, 0,22, 8, 2,'#4a2a18');
+    P(ctx,ox,oy, 1,22, 6, 1,'#6b4423');
+  },
+  table(ctx, ox, oy){
+    P(ctx,ox,oy, 1,14,14, 2,'rgba(0,0,0,0.16)');
+    P(ctx,ox,oy, 0, 2,16, 6,'#b8834c');
+    P(ctx,ox,oy, 1, 3,14, 4,'#d8a870');
+    P(ctx,ox,oy, 0, 2,16, 1,'#e8b880');
+    P(ctx,ox,oy, 2, 4,12, 1,'#c09060');
+    P(ctx,ox,oy, 0, 8,16, 2,'#a9713f');
+    P(ctx,ox,oy, 0, 9,16, 1,'#7a4a2a');
+    P(ctx,ox,oy, 2,10, 2, 6,'#8a5a33');
+    P(ctx,ox,oy,12,10, 2, 6,'#8a5a33');
+    P(ctx,ox,oy, 2,10, 1, 6,'#6b4423');
+    P(ctx,ox,oy,12,10, 1, 6,'#6b4423');
+    P(ctx,ox,oy, 3,14, 1, 2,'#5a3a1a');
+    P(ctx,ox,oy,13,14, 1, 2,'#5a3a1a');
+  },
+  chair(ctx, ox, oy){
+    P(ctx,ox,oy, 1, 7, 6, 1,'rgba(0,0,0,0.16)');
+    P(ctx,ox,oy, 1, 0, 6, 3,'#4a2a18');
+    P(ctx,ox,oy, 2, 1, 4, 2,'#8a5a33');
+    P(ctx,ox,oy, 0, 3, 8, 3,'#a9713f');
+    P(ctx,ox,oy, 0, 3, 8, 1,'#c98f5a');
+    P(ctx,ox,oy, 1, 5, 6, 1,'#7a4a2a');
+    P(ctx,ox,oy, 1, 6, 1, 2,'#6b4423');
+    P(ctx,ox,oy, 6, 6, 1, 2,'#6b4423');
+  },
+  sofa(ctx, ox, oy){
+    P(ctx,ox,oy, 1,14,22, 2,'rgba(0,0,0,0.18)');
+    P(ctx,ox,oy, 0, 0,24, 7,'#3f5c85');
+    P(ctx,ox,oy, 1, 1,22, 5,'#5b7fb5');
+    P(ctx,ox,oy, 3, 2, 8, 3,'#6b8fc5');
+    P(ctx,ox,oy,13, 2, 8, 3,'#6b8fc5');
+    P(ctx,ox,oy, 0, 0, 3,14,'#3f5c85');
+    P(ctx,ox,oy,21, 0, 3,14,'#3f5c85');
+    P(ctx,ox,oy, 0, 0, 1,14,'#2f4c75');
+    P(ctx,ox,oy,23, 0, 1,14,'#2f4c75');
+    P(ctx,ox,oy, 3, 7,18, 7,'#4a6a99');
+    P(ctx,ox,oy, 4, 8,16, 5,'#6b8fc5');
+    P(ctx,ox,oy, 4, 8, 7, 4,'#7ba0d0');
+    P(ctx,ox,oy,13, 8, 7, 4,'#7ba0d0');
+    P(ctx,ox,oy, 3,13,18, 1,'#3a5a85');
+    P(ctx,ox,oy, 3,14,18, 1,'#2f4c75');
+    P(ctx,ox,oy, 1,14, 1, 2,'#3a2a1a');
+    P(ctx,ox,oy,22,14, 1, 2,'#3a2a1a');
+  },
+  tv(ctx, ox, oy){
+    P(ctx,ox,oy, 3, 7,10, 1,'rgba(0,0,0,0.20)');
+    P(ctx,ox,oy, 6, 5, 4, 2,'#1a1a22');
+    P(ctx,ox,oy, 4, 7, 8, 1,'#1a1a22');
+    P(ctx,ox,oy, 1, 0,14, 6,'#2a2233');
+    P(ctx,ox,oy, 2, 1,12, 4,'#3a5a7a');
+    P(ctx,ox,oy, 3, 2, 4, 1,'#8ac0e0');
+    P(ctx,ox,oy, 3, 3, 2, 1,'#8ac0e0');
+    P(ctx,ox,oy,10, 3, 3, 1,'#8ac0e0');
+    P(ctx,ox,oy,13, 5, 1, 1,'#e05a4a');
+  },
+  computer(ctx, ox, oy){
+    P(ctx,ox,oy, 3, 7,10, 1,'rgba(0,0,0,0.20)');
+    P(ctx,ox,oy, 4, 0, 8, 5,'#2a2233');
+    P(ctx,ox,oy, 5, 1, 6, 3,'#6ad0e0');
+    P(ctx,ox,oy, 5, 1, 3, 1,'#a8e8f8');
+    P(ctx,ox,oy, 5, 2, 1, 1,'#a8e8f8');
+    P(ctx,ox,oy, 7, 5, 2, 1,'#2a2233');
+    P(ctx,ox,oy, 6, 6, 4, 1,'#3a3243');
+    P(ctx,ox,oy, 2, 7,12, 1,'#d8d0c0');
+    P(ctx,ox,oy, 3, 7, 2, 1,'#b0a898');
+    P(ctx,ox,oy,11, 7, 2, 1,'#b0a898');
+  },
+  lamp(ctx, ox, oy){
+    P(ctx,ox,oy, 0, 0, 8, 8,'rgba(255,240,160,0.18)');
+    P(ctx,ox,oy, 2, 6, 4, 2,'#6b4423');
+    P(ctx,ox,oy, 3, 6, 2, 1,'#8a5a33');
+    P(ctx,ox,oy, 3, 3, 2, 3,'#a88a4a');
+    P(ctx,ox,oy, 1, 1, 6, 3,'#e8c860');
+    P(ctx,ox,oy, 2, 0, 4, 1,'#e8c860');
+    P(ctx,ox,oy, 1, 3, 6, 1,'#c8a840');
+    P(ctx,ox,oy, 3, 4, 2, 1,'#fff8d0');
+  },
+  window(ctx, ox, oy){
+    P(ctx,ox,oy, 0, 0,16, 8,'#4a2a18');
+    P(ctx,ox,oy, 1, 1,14, 6,'#8a5a33');
+    P(ctx,ox,oy, 1, 1,14, 6,'#8fd4f0');
+    P(ctx,ox,oy, 1, 1,14, 2,'#b8e8ff');
+    P(ctx,ox,oy, 3, 2, 3, 1,'#ffffff');
+    P(ctx,ox,oy, 4, 3, 2, 1,'#ffffff');
+    P(ctx,ox,oy,10, 2, 2, 1,'#ffffff');
+    P(ctx,ox,oy,11, 3, 2, 1,'#ffffff');
+    P(ctx,ox,oy, 7, 1, 2, 6,'#6b4423');
+    P(ctx,ox,oy, 1, 4,14, 1,'#6b4423');
+    P(ctx,ox,oy, 1, 1,14, 1,'#4a2a18');
+    P(ctx,ox,oy, 1, 1, 1, 6,'#4a2a18');
+    P(ctx,ox,oy,14, 1, 1, 6,'#4a2a18');
+  },
+  door(ctx, ox, oy){
+    P(ctx,ox,oy, 0, 0,16,16,'#4a2a18');
+    P(ctx,ox,oy, 1, 1,14,15,'#8a5a33');
+    P(ctx,ox,oy, 3, 3,10, 5,'#a9713f');
+    P(ctx,ox,oy, 3, 9,10, 5,'#a9713f');
+    P(ctx,ox,oy, 3, 3,10, 1,'#c98f5a');
+    P(ctx,ox,oy, 3, 9,10, 1,'#c98f5a');
+    P(ctx,ox,oy, 3, 7,10, 1,'#6b4423');
+    P(ctx,ox,oy, 7, 3, 2, 5,'#6b4423');
+    P(ctx,ox,oy, 7, 9, 2, 5,'#6b4423');
+    P(ctx,ox,oy,12, 7, 2, 2,'#e8c860');
+    P(ctx,ox,oy,12, 7, 1, 1,'#fff8d0');
+  },
+  shelf(ctx, ox, oy){
+    P(ctx,ox,oy, 0, 1,16, 1,'#4a2a18');
+    P(ctx,ox,oy, 0, 2,16, 4,'#a9713f');
+    P(ctx,ox,oy, 0, 2,16, 1,'#c98f5a');
+    P(ctx,ox,oy, 0, 5,16, 1,'#7a4a2a');
+    P(ctx,ox,oy, 1, 6, 2, 2,'#6b4423');
+    P(ctx,ox,oy,13, 6, 2, 2,'#6b4423');
+    P(ctx,ox,oy, 1, 6, 1, 1,'#8a5a33');
+    P(ctx,ox,oy,13, 6, 1, 1,'#8a5a33');
+  },
+
+  /* ---------- FAMILY (8x16 sprites) ---------- */
+  mum(ctx, ox, oy){
+    P(ctx,ox,oy, 1,15, 6, 1,'rgba(0,0,0,0.20)');
+    P(ctx,ox,oy, 1, 0, 6, 5,'#6b3a1a');
+    P(ctx,ox,oy, 0, 3, 1, 6,'#6b3a1a');
+    P(ctx,ox,oy, 7, 3, 1, 6,'#6b3a1a');
+    P(ctx,ox,oy, 2, 2, 4, 4,'#f8d0a8');
+    P(ctx,ox,oy, 1, 1, 6, 2,'#6b3a1a');
+    P(ctx,ox,oy, 3, 3, 1, 1,'#2a1a10');
+    P(ctx,ox,oy, 5, 3, 1, 1,'#2a1a10');
+    P(ctx,ox,oy, 4, 5, 1, 1,'#c06060');
+    P(ctx,ox,oy, 3, 6, 2, 1,'#f8d0a8');
+    P(ctx,ox,oy, 0, 7, 1, 4,'#f8d0a8');
+    P(ctx,ox,oy, 7, 7, 1, 4,'#f8d0a8');
+    P(ctx,ox,oy, 1, 7, 6, 3,'#e060a0');
+    P(ctx,ox,oy, 1, 7, 6, 1,'#f080b0');
+    P(ctx,ox,oy, 0,10, 8, 3,'#e060a0');
+    P(ctx,ox,oy, 2,13, 1, 2,'#f8d0a8');
+    P(ctx,ox,oy, 5,13, 1, 2,'#f8d0a8');
+    P(ctx,ox,oy, 2,15, 1, 1,'#3a2a1a');
+    P(ctx,ox,oy, 5,15, 1, 1,'#3a2a1a');
+  },
+  dad(ctx, ox, oy){
+    P(ctx,ox,oy, 1,15, 6, 1,'rgba(0,0,0,0.20)');
+    P(ctx,ox,oy, 1, 0, 6, 3,'#3a2a1a');
+    P(ctx,ox,oy, 2, 2, 4, 4,'#e8b890');
+    P(ctx,ox,oy, 2, 1, 4, 1,'#3a2a1a');
+    P(ctx,ox,oy, 3, 3, 1, 1,'#1a1008');
+    P(ctx,ox,oy, 5, 3, 1, 1,'#1a1008');
+    P(ctx,ox,oy, 4, 5, 1, 1,'#a05050');
+    P(ctx,ox,oy, 3, 6, 2, 1,'#e8b890');
+    P(ctx,ox,oy, 0, 7, 1, 4,'#e8b890');
+    P(ctx,ox,oy, 7, 7, 1, 4,'#e8b890');
+    P(ctx,ox,oy, 1, 7, 6, 4,'#3a6ab0');
+    P(ctx,ox,oy, 1, 7, 6, 1,'#5a8ad0');
+    P(ctx,ox,oy, 1,11, 6, 3,'#2a3a5a');
+    P(ctx,ox,oy, 2,14, 1, 1,'#2a3a5a');
+    P(ctx,ox,oy, 5,14, 1, 1,'#2a3a5a');
+    P(ctx,ox,oy, 2,15, 1, 1,'#1a1a1a');
+    P(ctx,ox,oy, 5,15, 1, 1,'#1a1a1a');
+  },
+  sister(ctx, ox, oy){
+    P(ctx,ox,oy, 1,15, 6, 1,'rgba(0,0,0,0.20)');
+    P(ctx,ox,oy, 0, 2, 1, 4,'#c06020');
+    P(ctx,ox,oy, 7, 2, 1, 4,'#c06020');
+    P(ctx,ox,oy, 1, 0, 6, 5,'#c06020');
+    P(ctx,ox,oy, 2, 2, 4, 4,'#f8d0a8');
+    P(ctx,ox,oy, 1, 1, 6, 2,'#c06020');
+    P(ctx,ox,oy, 3, 3, 1, 1,'#2a1a10');
+    P(ctx,ox,oy, 5, 3, 1, 1,'#2a1a10');
+    P(ctx,ox,oy, 4, 5, 1, 1,'#c06060');
+    P(ctx,ox,oy, 3, 6, 2, 1,'#f8d0a8');
+    P(ctx,ox,oy, 0, 7, 1, 4,'#f8d0a8');
+    P(ctx,ox,oy, 7, 7, 1, 4,'#f8d0a8');
+    P(ctx,ox,oy, 1, 7, 6, 3,'#e0c040');
+    P(ctx,ox,oy, 1, 7, 6, 1,'#f0d060');
+    P(ctx,ox,oy, 0,10, 8, 3,'#e0c040');
+    P(ctx,ox,oy, 2,13, 1, 2,'#f8d0a8');
+    P(ctx,ox,oy, 5,13, 1, 2,'#f8d0a8');
+    P(ctx,ox,oy, 2,15, 1, 1,'#a04060');
+    P(ctx,ox,oy, 5,15, 1, 1,'#a04060');
+  },
+  brother(ctx, ox, oy){
+    P(ctx,ox,oy, 1,15, 6, 1,'rgba(0,0,0,0.20)');
+    P(ctx,ox,oy, 1, 0, 6, 3,'#8a5a20');
+    P(ctx,ox,oy, 1, 2, 1, 2,'#8a5a20');
+    P(ctx,ox,oy, 6, 2, 1, 2,'#8a5a20');
+    P(ctx,ox,oy, 2, 2, 4, 4,'#f0c0a0');
+    P(ctx,ox,oy, 3, 3, 1, 1,'#2a1a10');
+    P(ctx,ox,oy, 5, 3, 1, 1,'#2a1a10');
+    P(ctx,ox,oy, 4, 5, 1, 1,'#a06060');
+    P(ctx,ox,oy, 3, 6, 2, 1,'#f0c0a0');
+    P(ctx,ox,oy, 0, 7, 1, 4,'#f0c0a0');
+    P(ctx,ox,oy, 7, 7, 1, 4,'#f0c0a0');
+    P(ctx,ox,oy, 1, 7, 6, 4,'#4a9a4a');
+    P(ctx,ox,oy, 1, 7, 6, 1,'#6aba6a');
+    P(ctx,ox,oy, 1,11, 6, 2,'#3a3a4a');
+    P(ctx,ox,oy, 2,13, 1, 2,'#f0c0a0');
+    P(ctx,ox,oy, 5,13, 1, 2,'#f0c0a0');
+    P(ctx,ox,oy, 2,15, 1, 1,'#1a1a1a');
+    P(ctx,ox,oy, 5,15, 1, 1,'#1a1a1a');
+  },
+
+  /* ---------- PETS ---------- */
+  cat(ctx, ox, oy){
+    const B='#e08838', H='#f0a858', D='#b86820', N='#e06060';
+    P(ctx,ox,oy, 1, 7,13, 1,'rgba(0,0,0,0.20)');
+    P(ctx,ox,oy,13, 2, 1, 3,B);
+    P(ctx,ox,oy,14, 1, 1, 2,B);
+    P(ctx,ox,oy,14, 0, 1, 1,D);
+    P(ctx,ox,oy, 5, 3, 8, 4,B);
+    P(ctx,ox,oy, 5, 3, 8, 1,H);
+    P(ctx,ox,oy, 6, 6, 2, 1,D);
+    P(ctx,ox,oy,11, 6, 2, 1,D);
+    P(ctx,ox,oy, 1, 1, 5, 5,B);
+    P(ctx,ox,oy, 2, 3, 3, 3,H);
+    P(ctx,ox,oy, 1, 0, 2, 1,B);
+    P(ctx,ox,oy, 2, 0, 1, 1,N);
+    P(ctx,ox,oy, 5, 0, 1, 1,B);
+    P(ctx,ox,oy, 2, 2, 1, 1,'#2a5a1a');
+    P(ctx,ox,oy, 4, 2, 1, 1,'#2a5a1a');
+    P(ctx,ox,oy, 3, 4, 1, 1,N);
+  },
+  dog(ctx, ox, oy){
+    const B='#a06838', H='#b87848', D='#6b4820';
+    P(ctx,ox,oy, 1, 7,13, 1,'rgba(0,0,0,0.20)');
+    P(ctx,ox,oy,13, 2, 2, 1,B);
+    P(ctx,ox,oy,14, 1, 1, 1,B);
+    P(ctx,ox,oy, 4, 3,10, 4,B);
+    P(ctx,ox,oy, 4, 3,10, 1,H);
+    P(ctx,ox,oy, 5, 6, 2, 1,D);
+    P(ctx,ox,oy,11, 6, 2, 1,D);
+    P(ctx,ox,oy, 1, 1, 5, 5,B);
+    P(ctx,ox,oy, 0, 2, 1, 3,D);
+    P(ctx,ox,oy, 2, 2, 1, 1,'#1a1a1a');
+    P(ctx,ox,oy, 4, 2, 1, 1,'#1a1a1a');
+    P(ctx,ox,oy, 3, 4, 2, 2,H);
+    P(ctx,ox,oy, 3, 4, 1, 1,'#1a1a1a');
+    P(ctx,ox,oy, 3, 5, 1, 1,'#1a1a1a');
+  },
+  fish(ctx, ox, oy){
+    P(ctx,ox,oy, 1, 1, 6, 1,'#7aa0b0');
+    P(ctx,ox,oy, 0, 2, 1, 4,'rgba(180,230,250,0.7)');
+    P(ctx,ox,oy, 7, 2, 1, 4,'rgba(180,230,250,0.7)');
+    P(ctx,ox,oy, 1, 6, 6, 1,'rgba(180,230,250,0.7)');
+    P(ctx,ox,oy, 1, 2, 6, 4,'rgba(120,190,230,0.55)');
+    P(ctx,ox,oy, 2, 3, 3, 2,'#f08840');
+    P(ctx,ox,oy, 2, 3, 2, 1,'#f8a860');
+    P(ctx,ox,oy, 1, 4, 1, 1,'#f08840');
+    P(ctx,ox,oy, 4, 3, 1, 1,'#1a1a1a');
+    P(ctx,ox,oy, 4, 1, 1, 1,'rgba(255,255,255,0.75)');
+    P(ctx,ox,oy, 6, 2, 1, 1,'rgba(255,255,255,0.75)');
+  },
+  hamster(ctx, ox, oy){
+    P(ctx,ox,oy, 1, 7, 6, 1,'rgba(0,0,0,0.20)');
+    P(ctx,ox,oy, 1, 2, 1, 1,'#d8a868');
+    P(ctx,ox,oy, 6, 2, 1, 1,'#d8a868');
+    P(ctx,ox,oy, 2, 2, 1, 1,'#f0b8b8');
+    P(ctx,ox,oy, 5, 2, 1, 1,'#f0b8b8');
+    P(ctx,ox,oy, 1, 3, 6, 4,'#d8a868');
+    P(ctx,ox,oy, 1, 3, 6, 1,'#e8b878');
+    P(ctx,ox,oy, 2, 4, 1, 1,'#1a1a1a');
+    P(ctx,ox,oy, 5, 4, 1, 1,'#1a1a1a');
+    P(ctx,ox,oy, 3, 5, 2, 1,'#c06060');
+    P(ctx,ox,oy, 1, 5, 1, 1,'#f0b0b0');
+    P(ctx,ox,oy, 6, 5, 1, 1,'#f0b0b0');
+    P(ctx,ox,oy, 2, 6, 4, 1,'#f0e0c0');
+    P(ctx,ox,oy, 2, 7, 1, 1,'#b08848');
+    P(ctx,ox,oy, 5, 7, 1, 1,'#b08848');
+  },
+  parrot(ctx, ox, oy){
+    P(ctx,ox,oy, 2, 7, 4, 1,'rgba(0,0,0,0.20)');
+    P(ctx,ox,oy, 1, 5, 1, 2,'#3a5aa0');
+    P(ctx,ox,oy, 3, 5, 1, 1,'#a07030');
+    P(ctx,ox,oy, 4, 5, 1, 1,'#a07030');
+    P(ctx,ox,oy, 2, 6, 4, 1,'#8a5a30');
+    P(ctx,ox,oy, 2, 2, 4, 4,'#40a040');
+    P(ctx,ox,oy, 2, 2, 4, 1,'#60c060');
+    P(ctx,ox,oy, 2, 3, 1, 2,'#307030');
+    P(ctx,ox,oy, 2, 0, 4, 2,'#e04040');
+    P(ctx,ox,oy, 2, 0, 4, 1,'#f06060');
+    P(ctx,ox,oy, 4, 0, 1, 1,'#1a1a1a');
+    P(ctx,ox,oy, 5, 1, 1, 1,'#f0c040');
+  },
+  rabbit(ctx, ox, oy){
+    P(ctx,ox,oy, 1, 7, 6, 1,'rgba(0,0,0,0.20)');
+    P(ctx,ox,oy, 2, 0, 1, 3,'#f8f0e8');
+    P(ctx,ox,oy, 5, 0, 1, 3,'#f8f0e8');
+    P(ctx,ox,oy, 2, 0, 1, 2,'#f0c8c8');
+    P(ctx,ox,oy, 5, 0, 1, 2,'#f0c8c8');
+    P(ctx,ox,oy, 1, 3, 6, 3,'#f8f0e8');
+    P(ctx,ox,oy, 2, 4, 1, 1,'#d05070');
+    P(ctx,ox,oy, 5, 4, 1, 1,'#d05070');
+    P(ctx,ox,oy, 3, 5, 2, 1,'#f0a8a8');
+    P(ctx,ox,oy, 1, 6, 6, 2,'#f8f0e8');
+    P(ctx,ox,oy, 1, 7, 6, 1,'#e8e0d8');
+    P(ctx,ox,oy, 7, 5, 1, 1,'#ffffff');
+  },
+  turtle(ctx, ox, oy){
+    P(ctx,ox,oy, 1, 7, 6, 1,'rgba(0,0,0,0.20)');
+    P(ctx,ox,oy, 0, 5, 1, 1,'#80c880');
+    P(ctx,ox,oy, 1, 2, 5, 4,'#4a8a4a');
+    P(ctx,ox,oy, 1, 2, 5, 1,'#6aaa6a');
+    P(ctx,ox,oy, 2, 3, 3, 2,'#3a703a');
+    P(ctx,ox,oy, 3, 3, 1, 2,'#2a5a2a');
+    P(ctx,ox,oy, 6, 4, 2, 2,'#80c880');
+    P(ctx,ox,oy, 6, 4, 2, 1,'#a0d8a0');
+    P(ctx,ox,oy, 7, 4, 1, 1,'#1a1a1a');
+    P(ctx,ox,oy, 1, 6, 1, 1,'#80c880');
+    P(ctx,ox,oy, 3, 6, 1, 1,'#80c880');
+    P(ctx,ox,oy, 5, 6, 1, 1,'#80c880');
+  },
+};
+
+/* =========================================================
+   3b. POSES (sitting / lying)
+   Family sit on sofa, chair & bed; cat & dog curl up on the bed.
+   Sprites are looked up as <type>_sit / <type>_lie.
+   ========================================================= */
+const HUMANS = {
+  mum:     { hair:'#6b3a1a', skin:'#f8d0a8', top:'#e060a0', hi:'#f080b0', bottom:'#e060a0', shoe:'#3a2a1a', long:true, dress:true },
+  dad:     { hair:'#3a2a1a', skin:'#e8b890', top:'#3a6ab0', hi:'#5a8ad0', bottom:'#2a3a5a', shoe:'#1a1a1a' },
+  sister:  { hair:'#c06020', skin:'#f8d0a8', top:'#e0c040', hi:'#f0d060', bottom:'#e0c040', shoe:'#a04060', pig:true, dress:true },
+  brother: { hair:'#8a5a20', skin:'#f0c0a0', top:'#4a9a4a', hi:'#6aba6a', bottom:'#3a3a4a', shoe:'#1a1a1a' },
+};
+
+function humanSit(ctx, ox, oy, p){
+  const S = p.skin, E = '#2a1a10';
+  P(ctx,ox,oy, 1, 3, 6, 5, p.hair);
+  if (p.long){ P(ctx,ox,oy, 0, 6, 1, 6, p.hair); P(ctx,ox,oy, 7, 6, 1, 6, p.hair); }
+  if (p.pig){  P(ctx,ox,oy, 0, 5, 1, 4, p.hair); P(ctx,ox,oy, 7, 5, 1, 4, p.hair); }
+  P(ctx,ox,oy, 2, 5, 4, 4, S);
+  P(ctx,ox,oy, 1, 4, 6, 2, p.hair);
+  P(ctx,ox,oy, 3, 6, 1, 1, E);
+  P(ctx,ox,oy, 5, 6, 1, 1, E);
+  P(ctx,ox,oy, 4, 8, 1, 1, '#c06060');
+  P(ctx,ox,oy, 3, 9, 2, 1, S);
+  P(ctx,ox,oy, 0,10, 1, 3, S);
+  P(ctx,ox,oy, 7,10, 1, 3, S);
+  P(ctx,ox,oy, 1,10, 6, 3, p.top);
+  P(ctx,ox,oy, 1,10, 6, 1, p.hi);
+  if (p.dress) P(ctx,ox,oy, 0,13, 8, 2, p.top);
+  else         P(ctx,ox,oy, 1,13, 6, 2, p.bottom);
+  P(ctx,ox,oy, 2,15, 1, 1, p.shoe);
+  P(ctx,ox,oy, 5,15, 1, 1, p.shoe);
+}
+
+for (const k in HUMANS){
+  DRAW[k + '_sit'] = (c, x, y) => humanSit(c, x, y, HUMANS[k]);
+}
+
+DRAW.cat_lie = function(ctx, ox, oy){
+  const B='#e08838', H='#f0a858', D='#b86820', N='#e06060';
+  P(ctx,ox,oy, 0, 7, 8, 1,'rgba(0,0,0,0.18)');
+  P(ctx,ox,oy, 0, 4, 8, 3,B);
+  P(ctx,ox,oy, 4, 4, 4, 1,H);
+  P(ctx,ox,oy, 5, 6, 3, 1,D);
+  P(ctx,ox,oy, 0, 1, 5, 4,B);
+  P(ctx,ox,oy, 0, 0, 2, 1,B);
+  P(ctx,ox,oy, 1, 0, 1, 1,N);
+  P(ctx,ox,oy, 4, 0, 1, 1,B);
+  P(ctx,ox,oy, 1, 2, 3, 3,H);
+  P(ctx,ox,oy, 1, 3, 1, 1,D);
+  P(ctx,ox,oy, 3, 3, 1, 1,D);
+  P(ctx,ox,oy, 2, 4, 1, 1,N);
+};
+DRAW.dog_lie = function(ctx, ox, oy){
+  const B='#a06838', H='#b87848', D='#6b4820';
+  P(ctx,ox,oy, 0, 7, 8, 1,'rgba(0,0,0,0.18)');
+  P(ctx,ox,oy, 0, 4, 8, 3,B);
+  P(ctx,ox,oy, 4, 4, 4, 1,H);
+  P(ctx,ox,oy, 7, 3, 1, 2,B);
+  P(ctx,ox,oy, 5, 6, 2, 1,D);
+  P(ctx,ox,oy, 0, 1, 5, 4,B);
+  P(ctx,ox,oy, 0, 2, 1, 3,D);
+  P(ctx,ox,oy, 2, 2, 1, 1,D);
+  P(ctx,ox,oy, 4, 2, 1, 1,D);
+  P(ctx,ox,oy, 2, 3, 3, 2,H);
+  P(ctx,ox,oy, 2, 3, 1, 1,'#1a1a1a');
+};
+
+/* =========================================================
+   4. ROOM RENDERING
+   ========================================================= */
+function sortKey(item, room){
+  const def = ITEMS[item.type];
+  if (item.stackedOn && room.items.includes(item.stackedOn)){
+    return sortKey(item.stackedOn, room) + 0.5;
+  }
+  return def.layer * 10000 + (item.y + def.h) * 100 + item.x * 0.01;
+}
+
+function poseOf(item, parent){
+  if (parent.type === 'bed') return ITEMS[item.type].h >= 2 ? 'sit' : 'lie';
+  if (parent.type === 'sofa' || parent.type === 'chair') return 'sit';
+  return null;
+}
+
+/* width (in cells) an item takes while sitting on a given surface */
+function widthOn(item, parent){
+  const def = ITEMS[item.type];
+  return (parent && parent.type === 'bed' && def.bedW) ? def.bedW : def.w;
+}
+
+/* Where (art pixels) and with which sprite an item is drawn */
+function placement(item, room){
+  const def = ITEMS[item.type];
+  if (item.stackedOn && room.items.includes(item.stackedOn)){
+    const p = item.stackedOn, pd = ITEMS[p.type];
+    const w = widthOn(item, p);
+    const cl = Math.max(0, Math.min(Math.max(0, pd.w - w), item.x - p.x));
+    const ox = (p.x + cl) * APC;
+    const pose = poseOf(item, p);
+    const key = (pose && DRAW[item.type + '_' + pose]) ? item.type + '_' + pose : item.type;
+    let oy;
+    if (pose === 'lie' && key !== item.type) oy = p.y * APC + 14;
+    else oy = p.y * APC + (pd.surfaceOffset || 4) - def.h * APC;
+    return { ox, oy, sprite: key, w };
+  }
+  return { ox: item.x * APC, oy: item.y * APC, sprite: item.type, w: def.w };
+}
+
+function drawItem(ctx, item, room){
+  const pl = placement(item, room);
+  DRAW[pl.sprite](ctx, pl.ox, pl.oy);
+}
+
+function renderRoom(ctx, room, a){
+  A = a;
+  const W = ROOM_W * a, H = ROOM_H * a;
+  const wallH = WALL_ROWS * APC * a;
+  ctx.imageSmoothingEnabled = false;
+  ctx.clearRect(0, 0, W, H);
+
+  // wall
+  const wc = WALL_COLORS[room.wall] || WALL_COLORS[0];
+  ctx.fillStyle = wc.base;
+  ctx.fillRect(0, 0, W, wallH);
+  ctx.fillStyle = wc.stripe;
+  for(let x = 0; x < ROOM_W; x += 4) ctx.fillRect(x * a, 0, 2 * a, wallH);
+  ctx.fillStyle = 'rgba(0,0,0,0.12)';
+  ctx.fillRect(0, 0, W, 3 * a);
+
+  // floor
+  const fc = FLOOR_COLORS[room.floor] || FLOOR_COLORS[0];
+  ctx.fillStyle = fc.base;
+  ctx.fillRect(0, wallH, W, H - wallH);
+  ctx.fillStyle = fc.line;
+  for(let y = WALL_ROWS * APC; y <= ROOM_H; y += 4)
+    ctx.fillRect(0, y * a, W, a);
+  let row = 0;
+  for(let y = WALL_ROWS * APC + 4; y < ROOM_H; y += 8, row++){
+    for(let x = (row % 2) * 16; x < ROOM_W; x += 32)
+      ctx.fillRect(x * a, (y - 4) * a, a, 4 * a);
+  }
+  const grad = ctx.createLinearGradient(0, wallH, 0, wallH + 6 * a);
+  grad.addColorStop(0, 'rgba(0,0,0,0.18)');
+  grad.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, wallH, W, 6 * a);
+
+  // baseboard
+  ctx.fillStyle = '#6b4a2a';
+  ctx.fillRect(0, wallH - 2 * a, W, 2 * a);
+  ctx.fillStyle = '#8a6240';
+  ctx.fillRect(0, wallH - 2 * a, W, a);
+
+  // items
+  const sorted = [...room.items].sort((p, q) => sortKey(p, room) - sortKey(q, room));
+  for (const item of sorted) drawItem(ctx, item, room);
+}
+
+/* =========================================================
+   5. STATE
+   ========================================================= */
+const canvas = document.getElementById('roomCanvas');
+canvas.width  = ROOM_W * EDIT_A;
+canvas.height = ROOM_H * EDIT_A;
+const ctx = canvas.getContext('2d');
+
+let currentRoom = null;
+let selectedType = null;
+let dragState = null;
+let deleteMode = false;
+let hover = null;
+const undoStack = [];
+
+/* =========================================================
+   6. PLACEMENT & STACKING
+   ========================================================= */
+function clampPos(def, x, y){
+  x = Math.max(0, Math.min(CELLS_W - def.w, x));
+  y = Math.max(0, Math.min(CELLS_H - def.h, y));
+  if (def.minY !== undefined) y = Math.max(def.minY, y);
+  return { x, y };
+}
+
+function overlaps(a, b){
+  const ad = ITEMS[a.type], bd = ITEMS[b.type];
+  return a.x < b.x + bd.w && a.x + ad.w > b.x &&
+         a.y < b.y + bd.h && a.y + ad.h > b.y;
+}
+
+function canPlace(item, ignore){
+  const def = ITEMS[item.type];
+  if (item.x < 0 || item.y < 0) return false;
+  if (item.x + def.w > CELLS_W || item.y + def.h > CELLS_H) return false;
+  if (def.minY !== undefined && item.y < def.minY) return false;
+  if (def.zone === 'wall'){
+    if (item.y + def.h > WALL_ROWS) return false;
+  } else {
+    if (item.y < WALL_ROWS) return false;
+  }
+  for (const o of currentRoom.items){
+    if (o === ignore || o === item || o.stackedOn === item || o.stackedOn) continue;
+    // carpet lies under everything
+    if ((item.type === 'carpet') !== (o.type === 'carpet')) continue;
+    if (overlaps(item, o)) return false;
+  }
+  return true;
+}
+
+/* Row (in cells) where a stacked item stands, so that its cell matches the
+   place where it is drawn. */
+function stackRow(parent, def){
+  const off = ITEMS[parent.type].surfaceOffset || 4;
+  return parent.y + Math.floor((off - 1) / APC) - (def.h - 1);
+}
+
+/* Find a free spot on a surface (shelf, table, bed, sofa) for this item.
+   Does NOT modify the item. Returns {parent, x, y} or null. */
+function findStackSpot(item){
+  const def = ITEMS[item.type];
+  if (!def.canSitOn) return null;
+  // the item's feet (bottom row) decide which surface it lands on
+  const footY = item.y + def.h - 1;
+  const parents = currentRoom.items.filter(o => {
+    const od = ITEMS[o.type];
+    return o !== item && od.surface && def.canSitOn.includes(o.type) &&
+      item.x < o.x + od.w && item.x + def.w > o.x &&
+      footY >= o.y && footY < o.y + od.h;
+  });
+  for (const p of parents.reverse()){
+    const pd = ITEMS[p.type];
+    // must fit inside the room (e.g. nothing sits on a shelf at the very top)
+    const top = p.y * APC + (pd.surfaceOffset || 4) - def.h * APC;
+    if (top < 0) continue;
+    const w = widthOn(item, p);
+    const minX = p.x, maxX = p.x + pd.w - w;
+    if (maxX < minX) continue;
+    const taken = currentRoom.items.filter(o => o !== item && o.stackedOn === p);
+    const free = x => taken.every(o => x + w <= o.x || x >= o.x + widthOn(o, p));
+    const want = Math.max(minX, Math.min(maxX, item.x));
+    const xs = [];
+    for (let x = minX; x <= maxX; x++) xs.push(x);
+    xs.sort((a, b) => Math.abs(a - want) - Math.abs(b - want));
+    const x = xs.find(free);
+    if (x === undefined) continue;          // surface is full
+    return { parent: p, x, y: stackRow(p, def) };
+  }
+  return null;
+}
+
+function tryStack(item){
+  const spot = findStackSpot(item);
+  if (!spot) return false;
+  item.x = spot.x;
+  item.y = spot.y;
+  item.stackedOn = spot.parent;
+  return true;
+}
+
+/* Rectangle (art pixels) where the item is actually drawn */
+function itemRect(item){
+  const pl = placement(item, currentRoom);
+  const def = ITEMS[item.type];
+  return { x0: pl.ox, y0: pl.oy, x1: pl.ox + pl.w * APC, y1: pl.oy + def.h * APC };
+}
+
+/* Topmost item under a point (art pixels), respecting draw order */
+function itemAt(ax, ay){
+  const sorted = [...currentRoom.items].sort((p, q) =>
+    sortKey(q, currentRoom) - sortKey(p, currentRoom));
+  for (const it of sorted){
+    const r = itemRect(it);
+    if (ax >= r.x0 && ax < r.x1 && ay >= r.y0 && ay < r.y1) return it;
+  }
+  return null;
+}
+
+/* Removing a surface also removes what sits on it */
+function removeItem(it){
+  currentRoom.items = currentRoom.items.filter(o => o !== it && o.stackedOn !== it);
+}
+
+/* Moving a surface moves what sits on it */
+function moveItem(it, nx, ny){
+  const dx = nx - it.x, dy = ny - it.y;
+  it.x = nx; it.y = ny;
+  if (dx || dy){
+    for (const o of currentRoom.items){
+      if (o.stackedOn === it){ o.x += dx; o.y += dy; }
+    }
+  }
+}
+
+/* =========================================================
+   7. UNDO
+   ========================================================= */
+function snapshot(){
+  const items = currentRoom.items;
+  return JSON.stringify({
+    wall: currentRoom.wall, floor: currentRoom.floor,
+    items: items.map(i => ({
+      type: i.type, x: i.x, y: i.y,
+      si: i.stackedOn ? items.indexOf(i.stackedOn) : -1
+    }))
+  });
+}
+function updateUndoBtn(){
+  document.getElementById('undoBtn').disabled = undoStack.length === 0;
+}
+function pushUndo(){
+  if (!currentRoom) return;
+  undoStack.push(snapshot());
+  if (undoStack.length > 60) undoStack.shift();
+  updateUndoBtn();
+}
+function undo(){
+  if (!currentRoom || !undoStack.length) return;
+  const s = JSON.parse(undoStack.pop());
+  const r = deserializeRoom({ name: currentRoom.name, wall: s.wall, floor: s.floor, items: s.items });
+  currentRoom.wall = r.wall;
+  currentRoom.floor = r.floor;
+  currentRoom.items = r.items;
+  dragState = null;
+  updateSwatches();
+  updateUndoBtn();
+  draw();
+}
+
+/* =========================================================
+   8. EDITOR DRAWING
+   ========================================================= */
+function tintRect(r, ok){
+  const x = r.x0 * A, y = r.y0 * A, w = (r.x1 - r.x0) * A, h = (r.y1 - r.y0) * A;
+  ctx.fillStyle = ok ? 'rgba(120,230,120,0.28)' : 'rgba(240,80,80,0.40)';
+  ctx.fillRect(x, y, w, h);
+  ctx.strokeStyle = ok ? '#7ee87e' : '#f05050';
+  ctx.lineWidth = 3;
+  ctx.setLineDash([]);
+  ctx.strokeRect(x + 1.5, y + 1.5, w - 3, h - 3);
+}
+function outlineRect(r, color){
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 3;
+  ctx.setLineDash([10, 6]);
+  ctx.strokeRect(r.x0 * A + 1.5, r.y0 * A + 1.5, (r.x1 - r.x0) * A - 3, (r.y1 - r.y0) * A - 3);
+  ctx.setLineDash([]);
+}
+
+function draw(){
+  if(!currentRoom) return;
+  A = EDIT_A;
+  renderRoom(ctx, currentRoom, EDIT_A);
+  A = EDIT_A;
+
+  ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+  ctx.lineWidth = 1;
+  for(let x = 0; x <= CELLS_W; x++){
+    ctx.beginPath();
+    ctx.moveTo(x * APC * A + .5, 0);
+    ctx.lineTo(x * APC * A + .5, ROOM_H * A);
+    ctx.stroke();
+  }
+  for(let y = 0; y <= CELLS_H; y++){
+    ctx.beginPath();
+    ctx.moveTo(0, y * APC * A + .5);
+    ctx.lineTo(ROOM_W * A, y * APC * A + .5);
+    ctx.stroke();
+  }
+
+  if (dragState){
+    // item being dragged
+    const it = dragState.item;
+    const spot = findStackSpot(it);
+    let ok, r;
+    if (spot){
+      ok = true;
+      outlineRect(itemRect(spot.parent), '#f0c060');
+      r = itemRect({ type: it.type, x: spot.x, y: spot.y, stackedOn: spot.parent });
+    } else {
+      ok = canPlace(it, it);
+      r = itemRect(it);
+    }
+    tintRect(r, ok);
+  } else if (hover && deleteMode){
+    const f = itemAt(hover.ax, hover.ay);
+    if (f) tintRect(itemRect(f), false);
+  } else if (hover && selectedType){
+    // ghost preview of the selected item
+    const def = ITEMS[selectedType];
+    const pos = clampPos(def, hover.x - Math.floor(def.w / 2), hover.y - Math.floor(def.h / 2));
+    const g = { type: selectedType, x: pos.x, y: pos.y, stackedOn: null };
+    const spot = findStackSpot(g);
+    let ok;
+    if (spot){
+      g.x = spot.x; g.y = spot.y; g.stackedOn = spot.parent; ok = true;
+      outlineRect(itemRect(spot.parent), '#f0c060');
+    } else {
+      ok = canPlace(g, g);
+    }
+    ctx.save();
+    ctx.globalAlpha = 0.65;
+    A = EDIT_A;
+    drawItem(ctx, g, currentRoom);
+    ctx.restore();
+    tintRect(itemRect(g), ok);
+  }
+}
+
+/* =========================================================
+   9. INTERACTION
+   ========================================================= */
+function getPos(e){
+  const rect = canvas.getBoundingClientRect();
+  const px = (e.clientX - rect.left) * canvas.width / rect.width;
+  const py = (e.clientY - rect.top) * canvas.height / rect.height;
+  const ax = px / EDIT_A, ay = py / EDIT_A;
+  return { ax, ay, x: Math.floor(ax / APC), y: Math.floor(ay / APC) };
+}
+
+canvas.addEventListener('pointerdown', e => {
+  if(e.button === 2 || !currentRoom) return;
+  const p = getPos(e);
+  hover = p;
+
+  // delete mode
+  if(deleteMode){
+    const f = itemAt(p.ax, p.ay);
+    if(f){ pushUndo(); removeItem(f); draw(); }
+    return;
+  }
+
+  // place a new item (also onto shelf / table / bed / sofa)
+  if(selectedType){
+    const def = ITEMS[selectedType];
+    const pos = clampPos(def, p.x - Math.floor(def.w / 2), p.y - Math.floor(def.h / 2));
+    const item = { type: selectedType, x: pos.x, y: pos.y, stackedOn: null };
+    if (tryStack(item) || canPlace(item, item)){
+      pushUndo();
+      currentRoom.items.push(item);
+      dragState = {
+        item, offX: p.x - item.x, offY: p.y - item.y,
+        origX: item.x, origY: item.y, origStack: null, isNew: true
+      };
+      canvas.setPointerCapture(e.pointerId);
+      draw();
+      return;
+    }
+  }
+
+  // pick up an existing item
+  const found = itemAt(p.ax, p.ay);
+  if(found){
+    pushUndo();
+    selectedType = null;
+    updatePaletteSelection();
+    dragState = {
+      item: found,
+      offX: p.x - found.x,
+      offY: p.y - found.y,
+      origX: found.x,
+      origY: found.y,
+      origStack: found.stackedOn || null,
+      isNew: false
+    };
+    found.stackedOn = null;
+    canvas.setPointerCapture(e.pointerId);
+    draw();
+  }
+});
+
+canvas.addEventListener('pointermove', e => {
+  if(!currentRoom) return;
+  const p = getPos(e);
+  hover = p;
+  if(!dragState){ draw(); return; }
+  const it = dragState.item;
+  const pos = clampPos(ITEMS[it.type], p.x - dragState.offX, p.y - dragState.offY);
+  it.stackedOn = null;
+  if(pos.x !== it.x || pos.y !== it.y) moveItem(it, pos.x, pos.y);
+  draw();
+});
+
+canvas.addEventListener('pointerleave', () => {
+  hover = null;
+  if(!dragState) draw();
+});
+
+function endDrag(){
+  if(!dragState) return;
+  const it = dragState.item;
+  if (!tryStack(it)){
+    if (!canPlace(it, it)){
+      if (dragState.isNew){
+        removeItem(it);
+      } else {
+        moveItem(it, dragState.origX, dragState.origY);
+        it.stackedOn = dragState.origStack;
+      }
+    }
+  }
+  dragState = null;
+  // nothing changed → drop the undo entry
+  if (undoStack.length && snapshot() === undoStack[undoStack.length - 1]){
+    undoStack.pop();
+    updateUndoBtn();
+  }
+  draw();
+}
+canvas.addEventListener('pointerup', endDrag);
+canvas.addEventListener('pointercancel', endDrag);
+
+canvas.addEventListener('contextmenu', e => {
+  e.preventDefault();
+  if(!currentRoom) return;
+  const p = getPos(e);
+  const found = itemAt(p.ax, p.ay);
+  if(found){ pushUndo(); removeItem(found); draw(); }
+});
+
+document.addEventListener('keydown', e => {
+  if(!document.getElementById('editor').classList.contains('active')) return;
+  if(e.key === 'Escape'){
+    selectedType = null;
+    setDeleteMode(false);
+    updatePaletteSelection();
+    draw();
+  }
+  if((e.ctrlKey || e.metaKey) && e.code === 'KeyZ' && e.target.tagName !== 'INPUT'){
+    e.preventDefault();
+    undo();
+  }
+});
+
+/* =========================================================
+   10. PALETTE
+   ========================================================= */
+function updateStatus(){
+  const el = document.getElementById('status');
+  if(deleteMode){
+    el.className = 'status del';
+    el.textContent = '🗑 Delete mode — click an item to remove it';
+  } else if(selectedType){
+    const d = ITEMS[selectedType];
+    let msg = 'Placing: ' + d.name + ' — click the room';
+    if(d.canSitOn) msg += ' (can go on: ' + d.canSitOn.map(t => ITEMS[t].name.toLowerCase()).join(' / ') + ')';
+    if(d.minY !== undefined) msg += ' (lower wall row only)';
+    el.className = 'status';
+    el.textContent = msg;
+  } else {
+    el.className = 'status';
+    el.textContent = 'Pick an item on the left, or drag an item in the room to move it';
+  }
+}
+
+function updatePaletteSelection(){
+  document.querySelectorAll('.pal-item').forEach(b => {
+    b.classList.toggle('active', b.dataset.type === selectedType);
+  });
+  updateStatus();
+}
+function updateSwatches(){
+  document.querySelectorAll('#wallSwatches .swatch').forEach((b, i) =>
+    b.classList.toggle('active', i === currentRoom.wall));
+  document.querySelectorAll('#floorSwatches .swatch').forEach((b, i) =>
+    b.classList.toggle('active', i === currentRoom.floor));
+}
+
+function setDeleteMode(v){
+  deleteMode = v;
+  document.getElementById('deleteModeBtn').classList.toggle('active', v);
+  canvas.style.cursor = v ? 'not-allowed' : 'crosshair';
+  if(v) selectedType = null;
+  updatePaletteSelection();
+  draw();
+}
+
+function makeItemButton(type){
+  const def = ITEMS[type];
+  const btn = document.createElement('button');
+  btn.className = 'pal-item';
+  btn.dataset.type = type;
+  btn.title = def.name;
+
+  const box = document.createElement('div');
+  box.className = 'pal-preview';
+  const c = document.createElement('canvas');
+  const maxW = 66, maxH = 56;
+  const a = Math.max(1, Math.min(
+    Math.floor(maxW / (def.w * APC)),
+    Math.floor(maxH / (def.h * APC))
+  ));
+  A = a;
+  c.width  = def.w * APC * a;
+  c.height = def.h * APC * a;
+  const cx = c.getContext('2d');
+  cx.imageSmoothingEnabled = false;
+  DRAW[type](cx, 0, 0);
+  box.appendChild(c);
+
+  const label = document.createElement('span');
+  label.textContent = def.name;
+
+  btn.appendChild(box);
+  btn.appendChild(label);
+  btn.addEventListener('click', () => {
+    if(deleteMode) setDeleteMode(false);
+    selectedType = (selectedType === type) ? null : type;
+    updatePaletteSelection();
+    draw();
+  });
+  return btn;
+}
+
+function buildPalette(){
+  const wallBox = document.getElementById('wallSwatches');
+  WALL_COLORS.forEach((c, i) => {
+    const b = document.createElement('button');
+    b.className = 'swatch';
+    b.style.background = c.base;
+    b.title = 'Wall color ' + (i + 1);
+    b.setAttribute('aria-label', b.title);
+    b.addEventListener('click', () => {
+      if(currentRoom.wall === i) return;
+      pushUndo();
+      currentRoom.wall = i; updateSwatches(); draw();
+    });
+    wallBox.appendChild(b);
+  });
+  const floorBox = document.getElementById('floorSwatches');
+  FLOOR_COLORS.forEach((c, i) => {
+    const b = document.createElement('button');
+    b.className = 'swatch';
+    b.style.background = c.base;
+    b.title = 'Floor color ' + (i + 1);
+    b.setAttribute('aria-label', b.title);
+    b.addEventListener('click', () => {
+      if(currentRoom.floor === i) return;
+      pushUndo();
+      currentRoom.floor = i; updateSwatches(); draw();
+    });
+    floorBox.appendChild(b);
+  });
+
+  const fBox = document.getElementById('floorItems');
+  FLOOR_ITEM_LIST.forEach(t => fBox.appendChild(makeItemButton(t)));
+  const famBox = document.getElementById('familyItems');
+  FAMILY_ITEM_LIST.forEach(t => famBox.appendChild(makeItemButton(t)));
+  const petBox = document.getElementById('petItems');
+  PET_ITEM_LIST.forEach(t => petBox.appendChild(makeItemButton(t)));
+  const wBox = document.getElementById('wallItems');
+  WALL_ITEM_LIST.forEach(t => wBox.appendChild(makeItemButton(t)));
+}
+
+/* =========================================================
+   11. STORAGE
+   ========================================================= */
+const STORAGE_KEY = 'roomdecor_rooms_en_v2';
+
+function loadRooms(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    const arr = raw ? JSON.parse(raw) : [];
+    return Array.isArray(arr) ? arr : [];
+  }catch(e){ return []; }
+}
+function saveRooms(rooms){
+  try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(rooms)); }catch(e){}
+}
+function serializeRoom(room){
+  const items = room.items.map(i => ({
+    type: i.type, x: i.x, y: i.y,
+    si: i.stackedOn ? room.items.indexOf(i.stackedOn) : -1
+  }));
+  return {
+    name: room.name.trim() || 'Student',
+    wall: room.wall, floor: room.floor,
+    items, date: new Date().toLocaleDateString('en-US')
+  };
+}
+function deserializeRoom(data){
+  const items = data.items.map(i => ({ type: i.type, x: i.x, y: i.y }));
+  (data.items || []).forEach((i, idx) => {
+    if (i.si >= 0 && i.si < items.length && i.si !== idx){
+      items[idx].stackedOn = items[i.si];
+    }
+  });
+  return {
+    name: data.name || 'Student',
+    wall: data.wall || 0,
+    floor: data.floor || 0,
+    items,
+    date: data.date || ''
+  };
+}
+function saveCurrentRoom(){
+  const rooms = loadRooms();
+  const entry = serializeRoom(currentRoom);
+  const key = entry.name.trim().toLowerCase();
+  const idx = rooms.findIndex(r => (r.name || '').trim().toLowerCase() === key);
+  if(idx >= 0) rooms[idx] = entry; else rooms.push(entry);
+  saveRooms(rooms);
+}
+
+/* =========================================================
+   12. SCREENS
+   ========================================================= */
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo(0, 0);
+}
+
+document.getElementById('startBtn').addEventListener('click', () => {
+  const name = document.getElementById('nameInput').value.trim() || 'Student';
+  currentRoom = { name, wall:0, floor:0, items:[] };
+  document.getElementById('editorName').value = name;
+  selectedType = null;
+  dragState = null;
+  hover = null;
+  undoStack.length = 0;
+  updateUndoBtn();
+  deleteMode = false;
+  document.getElementById('deleteModeBtn').classList.remove('active');
+  canvas.style.cursor = 'crosshair';
+  updatePaletteSelection();
+  updateSwatches();
+  showScreen('editor');
+  draw();
+});
+
+document.getElementById('toGalleryBtn').addEventListener('click', () => {
+  showScreen('gallery');
+  renderGallery();
+});
+
+document.getElementById('editorName').addEventListener('input', e => {
+  if(currentRoom) currentRoom.name = e.target.value;
+});
+
+document.getElementById('backToMenu').addEventListener('click', () => {
+  showScreen('menu');
+});
+
+document.getElementById('undoBtn').addEventListener('click', undo);
+
+document.getElementById('clearBtn').addEventListener('click', () => {
+  if(!currentRoom || !currentRoom.items.length) return;
+  if(confirm('Remove all items from the room?')){
+    pushUndo();
+    currentRoom.items = [];
+    draw();
+  }
+});
+
+document.getElementById('deleteModeBtn').addEventListener('click', () => {
+  setDeleteMode(!deleteMode);
+});
+
+document.getElementById('doneBtn').addEventListener('click', () => {
+  if(!currentRoom) return;
+  if(!currentRoom.name.trim()){
+    alert('Please enter your name so your room can be labeled!');
+    document.getElementById('editorName').focus();
+    return;
+  }
+  saveCurrentRoom();
+  showScreen('gallery');
+  renderGallery();
+});
+
+document.getElementById('galleryBack').addEventListener('click', () => {
+  showScreen('menu');
+});
+
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, c => (
+    { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]
+  ));
+}
+
+function renderGallery(){
+  const rooms = loadRooms();
+  const grid = document.getElementById('galleryGrid');
+  grid.innerHTML = '';
+  if(rooms.length === 0){
+    grid.innerHTML = '<p class="empty">No rooms yet.<br>Decorate yours and it will appear here!</p>';
+    return;
+  }
+  rooms.forEach((data, index) => {
+    const room = deserializeRoom(data);
+    const card = document.createElement('div');
+    card.className = 'card';
+
+    const c = document.createElement('canvas');
+    const a = 4;
+    c.width  = ROOM_W * a;
+    c.height = ROOM_H * a;
+    const cx = c.getContext('2d');
+    renderRoom(cx, room, a);
+    card.appendChild(c);
+
+    const cap = document.createElement('div');
+    cap.className = 'card-cap';
+    cap.innerHTML = `<strong>${escapeHtml(room.name)}</strong>
+                     <span class="date">${escapeHtml(room.date || '')}</span>`;
+    card.appendChild(cap);
+
+    const del = document.createElement('button');
+    del.className = 'card-del';
+    del.textContent = '×';
+    del.title = 'Delete room';
+    del.setAttribute('aria-label', 'Delete room');
+    del.addEventListener('click', () => {
+      if(confirm('Delete the room by "' + room.name + '"?')){
+        const list = loadRooms();
+        list.splice(index, 1);
+        saveRooms(list);
+        renderGallery();
+      }
+    });
+    card.appendChild(del);
+    grid.appendChild(card);
+  });
+}
+
+document.getElementById('exportBtn').addEventListener('click', () => {
+  const data = JSON.stringify(loadRooms(), null, 2);
+  const blob = new Blob([data], { type:'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'rooms.json';
+  a.click();
+  URL.revokeObjectURL(url);
+});
+
+const importFile = document.getElementById('importFile');
+document.getElementById('importBtn').addEventListener('click', () => importFile.click());
+importFile.addEventListener('change', e => {
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try{
+      const incoming = JSON.parse(reader.result);
+      if(!Array.isArray(incoming)) throw new Error('bad');
+      const existing = loadRooms();
+      const map = new Map(existing.map(r => [(r.name || '').toLowerCase(), r]));
+      incoming.forEach(r => {
+        // skip malformed rooms so they can't break rendering later
+        if(r && r.name && Array.isArray(r.items) &&
+           r.items.every(i => i && ITEMS[i.type] && Number.isFinite(i.x) && Number.isFinite(i.y))){
+          map.set(String(r.name).toLowerCase(), r);
+        }
+      });
+      saveRooms([...map.values()]);
+      renderGallery();
+    }catch(err){
+      alert('Could not read the file. Please use a JSON file saved with the "Save File" button.');
+    }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+});
+
+/* =========================================================
+   13. START
+   ========================================================= */
+currentRoom = { name:'', wall:0, floor:0, items:[] };
+buildPalette();
+updateSwatches();
+updateStatus();
+</script>
+</body>
+</html>
